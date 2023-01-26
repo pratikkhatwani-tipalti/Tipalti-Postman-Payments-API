@@ -1,0 +1,374 @@
+{
+	"info": {
+		"_postman_id": "78db668d-81c4-4b4c-b608-7c6f3f2e4882",
+		"name": "Tipalti Payments",
+		"description": "# [Using the Tipalti Endpoints](https://support.tipalti.com/Content/Topics/Development/APIs/UseTipaltisApis.htm)\n\nTipalti provides the following types of endpoints:\n\n1. **Payee Functions** - API requests related to payees in the tipalti instance (creating suppliers etc.)\n2. **Payer Functions** - API requests related to payer actions in the tipalti instance (sending payments etc.)\n    \n\nTipalti uses a phased approach for development, testing and deployment.\n\n- The Tipalti sandbox environment is for development and testing phases.\n- The Tipalti production environment is for deployment.\n    \n\n### Tipalti Endpoints\n\n> Current version is v11\n\n### Payee API\n\n- Sandbox\n    \n\n> [`https://api.sandbox.tipalti.com/v11/PayeeFunctions.asmx`](https://api.sandbox.tipalti.com/v11/PayeeFunctions.asmx)\n\n- Production\n    \n\n> [`https://api.tipalti.com/v11/PayeeFunctions.asmx`](https://api.tipalti.com/v11/PayeeFunctions.asmx)\n\n### Payer API\n\n- Sandbox\n    \n\n> [`https://api.sandbox.tipalti.com/v11/PayerFunctions.asmx`](https://api.sandbox.tipalti.com/v11/PayerFunctions.asmx)\n\n- Production\n    \n\n> [`https://api.tipalti.com/v11/PayerFunctions.asmx`](https://api.tipalti.com/v11/PayerFunctions.asmx)\n\n# [Authentication : Using Encryption Key](https://support.tipalti.com/Content/Topics/Development/APIs/UseEncryptionKey.htm)\n\nAll calls to Tipalti's API web service carry an encryption key. Every request to Tipalti must contain authentication information to establish the identity of the organization making the request. The authentication process is accomplished by signing the headers using a calculated signature \\[hmac\\] (Hashkey).\n\nThere are 4 steps in which the signature is calculated:\n\n1. An authentication string, which contains\n    1. Payer name \\[PayerName\\]\n    2. Payee ID \\[idap\\] (for payee functions)\n    3. Unix Timestamp \\[now\\] (UTC time)\n2. Add any EAT parameters(based on function) to the authentication string. Each function has listed it's EAT parameter.\n3. UTF-8 encode the authorization string\n4. Encrypt the authorization string with the private API key using HMACSHA256\n    \n\n> Note: We have incorporated each functions signature calculation for authorization in the pre-request scripts of the function. Please look at each pre-request script or function definition below.\n\n### Using Postman Environment and pre-request scripts for authentication\n\n#### Tipalti Payments API Environment - Description\n\n| **Variable** | **Description** | **Fixed / Dynamic** | **Functions** |\n| --- | --- | --- | --- |\n| PayerName | The name of the payer, as assigned by Tipalti | Fixed | All |\n| API_SANDBOX_KEY | Private API Key, found in Tipalti AP Hub | Fixed (unless changed) | All |\n| idap | Unique payee identifier (the payee ID) | Assign Values | All |\n| street1 | Intended to be used for any EAT Parameters for UpdateOrCreatePayeeInfo | Assign Values (Optional) | UpdateOrCreatePayeeInfo (street1) |\n| paymentGroupTitle | Intended to be used for any EAT Parameters for ProcessPayments | Assign Values (Optional) | ProcessPayments (paymentGroupTitle) |\n| now | Current time (UTC) when the request is sent | Dynamic (Auto-generated) | All |\n| encoded | UTF-8 encoded authorization string | Dynamic (Auto-generated) | All |\n| hmac | Calculated signature encryption key (Hashkey) | Dynamic (Auto-generated) | All |\n| pay_amount | The amount to be paid to the payee | Dynamic (Auto-generated) | ProcessPayments |\n| ref_code | The reference code for the payment order. Must be unique.  <br>  <br>Calculated using idap+now+pay_amount | Dynamic (Auto-generated) | ProcessPayments |\n\n### Calculation of signature key / Hashkey / hmac in pre-request scripts\n\n> Example of hmac calculation for Payer APIs - ProcessPayments in Postman pre-request scripts\n\n``` javascript\n//Example of hmac calculation for Payer APIs - ProcessPayments in Postman pre-request scripts\n//Get the timestamp, and remove leading 0s\nlet now = Math.floor(Date.now() / 1000) \n//Set the time to variable 'now'\npm.environment.set('now',now)\n//Retrieve the payer name from the environment\nlet payer = pm.variables.get(\"PayerName\")\n//Retrieve the idap from the environment, reuse if idap needs to get passed in the encryption\nlet idap = pm.variables.get(\"idap\")\n//Retrieve the API Key for this sandbox instance\nlet key = encodeURI(environment.API_SANDBOX_KEY, 'utf-8')\n//Calculate the authentication string without EAT parameter\nlet encoded = payer+now;\n/* ProcessPayments with EATParameter\nlet encoded = payer+now+paymentGroupTitle;*/\n//Encrypt the Authentication string (encoded) with the API key\nlet hmac = CryptoJS.HmacSHA256(encoded, key).toString(CryptoJS.digest)\n//Set the generated hashkey to environment variable as 'hmac'\npm.environment.set('hmac',hmac);\n\n```\n\n### Calculation of signature key / Hashkey / hmac using Python\n\n| **Postman Environment Variable** | **Python Example Variable** |\n| --- | --- |\n| API_SANDBOX_KEY | api_key |\n| encoded | auth_str |\n| hmac | key |\n\n> Example of hmac calculation for Payer APIs - ProcessPayments using Python (No EATparameter)\n\n``` python\n# Import Libraries\nimport math\nimport time\nimport hmac\nimport hashlib\n#Step 1 & 2 - Set variables, Payer Name and Private Key\nPayerName = \"YOUR-PAYER-API\"\napi_key = \"YOUR-API-KEY\"\n#Calculate the time stamp\nnow = str(math.floor(time.time()))\n#Define authentication string\nauth_str = PayerName+now\n#auth_str = PayerName+now+paymentGroupTitle if EAT is passed\n#Step 3 - Encode the authentication string\nauth_str.encode(encoding = 'UTF-8')\n#Step 4 -Encrypt the authentication string and private key with SHA256\nkey = hmac.new(api_key.encode(), auth_str.encode(), hashlib.sha256).hexdigest()\n#If using EAT parameter, define authentication string as:\n\"\"\"\"\nEATparameter = 'Enter Value' \nauth_str = PayerName+now+EATparameter\n\"\"\"\"\n\n```",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "18889564"
+	},
+	"item": [
+		{
+			"name": "Payee API",
+			"item": [
+				{
+					"name": "GetPayeeDetails",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"//Get the timestamp, and remove leading 0s\r",
+									"let now = Math.floor(Date.now() / 1000) \r",
+									"\r",
+									"//Set the time to variable 'now'\r",
+									"pm.environment.set('now',now)\r",
+									"\r",
+									"//Retrieve the payer name from the environment\r",
+									"let payer = pm.variables.get(\"PayerName\")\r",
+									"\r",
+									"//Retrieve the idap from the environment, reuse if idap needs to get passed in the encryption\r",
+									"\r",
+									"let idap = pm.variables.get(\"idap\")\r",
+									"\r",
+									"//Retrieve the API Key for this sandbox instance\r",
+									"let key = encodeURI(environment.API_SANDBOX_KEY, 'utf-8')\r",
+									"\r",
+									"//Create the authorization string - Payer + IDAP + Now\r",
+									"let encoded = payer+idap+now;\r",
+									"\r",
+									"//SHA-256 the private key with the authorization string, to generate the hashkey\r",
+									"let hmac = CryptoJS.HmacSHA256(encoded, key).toString(CryptoJS.digest)\r",
+									"\r",
+									"//Set the hashkey\r",
+									"pm.environment.set('hmac',hmac);\r",
+									""
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "text/xml; charset=utf-8",
+								"type": "text"
+							},
+							{
+								"key": "SOAPAction",
+								"value": "http://Tipalti.org/GetPayeeDetails",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "<x:Envelope\r\n    xmlns:x=\"http://schemas.xmlsoap.org/soap/envelope/\"\r\n    xmlns:tip=\"http://Tipalti.org/\">\r\n    <x:Header/>\r\n    <x:Body>\r\n        <tip:GetPayeeDetails>\r\n            <tip:payerName>{{PayerName}}</tip:payerName>\r\n            <tip:timestamp>{{now}}</tip:timestamp>\r\n            <tip:key>{{hmac}}</tip:key>\r\n            <tip:idap>{{idap}}</tip:idap>\r\n        </tip:GetPayeeDetails>\r\n    </x:Body>\r\n</x:Envelope>",
+							"options": {
+								"raw": {
+									"language": "xml"
+								}
+							}
+						},
+						"url": {
+							"raw": "https://api.sandbox.tipalti.com/v11/PayeeFunctions.asmx",
+							"protocol": "https",
+							"host": [
+								"api",
+								"sandbox",
+								"tipalti",
+								"com"
+							],
+							"path": [
+								"v11",
+								"PayeeFunctions.asmx"
+							]
+						},
+						"description": "The GetPayeeDetails function returns information for a specific payee.\n\n- This API call DOES require the IDAP for the encryption key calculation.\n- This API call requires you to enter a payee ID (idap).\n- EAT parameter: None\n    \n\n**Pre-request script - Authorization string \\[variable name = encoded\\]**\n\n``` javascript\nlet encoded = payer+idap+now;\n\n```\n\n### [Request parameters](https://support.tipalti.com/Content/Topics/Development/APIs/PayeeAPI/GetPayeeDetails/GetPayeeDetails/Intro.htm#RequestParameters)\n\n| **Variable** | **Description** | **Limitation** | **Mandatory** | **Data Type** |\n| --- | --- | --- | --- | --- |\n| payerName | The name of the payer, as assigned by Tipalti | Value is case sensitive | Mandatory | string |\n| timeStamp | Current time (UTC) when the request is sent | Unix time | Mandatory | double |\n| key | Encrypted Hash key |  | Mandatory | string |\n| idap | Unique payee identifier (the payee ID) |  | Mandatory | string |"
+					},
+					"response": []
+				},
+				{
+					"name": "GetExtendedPayeeDetails",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"//Get the timestamp, and remove leading 0s\r",
+									"let now = Math.floor(Date.now() / 1000) \r",
+									"\r",
+									"//Set the time to variable 'now'\r",
+									"pm.environment.set('now',now)\r",
+									"\r",
+									"//Retrieve the payer name from the environment\r",
+									"let payer = pm.variables.get(\"PayerName\")\r",
+									"\r",
+									"//Retrieve the idap from the environment, reuse if idap needs to get passed in the encryption\r",
+									"let idap = pm.variables.get(\"idap\")\r",
+									"\r",
+									"//Retrieve the API Key for this sandbox instance\r",
+									"let key = encodeURI(environment.API_SANDBOX_KEY, 'utf-8')\r",
+									"\r",
+									"//let encoded = payer+now; No EATParameters\r",
+									"let encoded = payer+idap+now;\r",
+									"\r",
+									"//Encrypt the Authentication string (encoded) with the API key\r",
+									"let hmac = CryptoJS.HmacSHA256(encoded, key).toString(CryptoJS.digest)\r",
+									"console.log(hmac)\r",
+									"//Set the generated hashkey to environment variable as 'hmac'\r",
+									"pm.environment.set('hmac',hmac);\r",
+									"/*console.log(hmac);*/"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"protocolProfileBehavior": {
+						"disabledSystemHeaders": {}
+					},
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "SOAPAction",
+								"value": "http://Tipalti.org/GetExtendedPayeeDetails",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "text/xml; charset=utf-8",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "<x:Envelope\r\n    xmlns:x=\"http://schemas.xmlsoap.org/soap/envelope/\"\r\n    xmlns:tip=\"http://Tipalti.org/\">\r\n    <x:Header/>\r\n    <x:Body>\r\n        <tip:GetExtendedPayeeDetails>\r\n            <tip:payeeInfoRequest>\r\n                <tip:PayerName>{{PayerName}}</tip:PayerName>\r\n                <tip:Timestamp>{{now}}</tip:Timestamp>\r\n                <tip:Key>{{hmac}}</tip:Key>\r\n                <tip:Idap>{{idap}}</tip:Idap>\r\n            </tip:payeeInfoRequest>\r\n        </tip:GetExtendedPayeeDetails>\r\n    </x:Body>\r\n</x:Envelope>",
+							"options": {
+								"raw": {
+									"language": "xml"
+								}
+							}
+						},
+						"url": {
+							"raw": "https://api.sandbox.tipalti.com/v11/PayeeFunctions.asmx",
+							"protocol": "https",
+							"host": [
+								"api",
+								"sandbox",
+								"tipalti",
+								"com"
+							],
+							"path": [
+								"v11",
+								"PayeeFunctions.asmx"
+							]
+						},
+						"description": "The GetExtendedPayeeDetails function returns extended information for a specific payee.\n\n- This API call <u><b>DOES </b></u> require the IDAP for the encryption key calculation.\n- This API call requires you to enter a payee ID (idap) to query.\n- EAT parameter: None\n    \n\n**Pre-request script - Authorization string \\[variable name = encoded\\]**\n\n``` javascript\nlet encoded = payer+idap+now;\n\n```\n\n### [Request parameters](https://support.tipalti.com/Content/Topics/Development/APIs/PayeeAPI/GetPayeeDetails/GetExtendedPayeeDetails/Intro.htm)\n\n| **Variable** | **Description** | **Limitation** | **Mandatory** | **Data Type** |\n| --- | --- | --- | --- | --- |\n| payerName | The name of the payer, as assigned by Tipalti | Value is case sensitive | Mandatory | string |\n| timeStamp | Current time (UTC) when the request is sent | Unix time | Mandatory | double |\n| key | Encrypted Hash key |  | Mandatory | string |\n| idap | Unique payee identifier (the payee ID) |  | Mandatory | string |"
+					},
+					"response": []
+				},
+				{
+					"name": "UpdateOrCreatePayeeInfo",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"//Get the timestamp, and remove leading 0s\r",
+									"let now = Math.floor(Date.now() / 1000) \r",
+									"\r",
+									"//Set the time to variable 'now'\r",
+									"pm.environment.set('now',now)\r",
+									"\r",
+									"//Retrieve the payer name from the environment\r",
+									"let payer = pm.variables.get(\"PayerName\")\r",
+									"\r",
+									"//Retrieve the idap from the environment, reuse if idap needs to get passed in the encryption\r",
+									"let idap = pm.variables.get(\"idap\")\r",
+									"\r",
+									"//Retrieve the API Key for this sandbox instance\r",
+									"let key = encodeURI(environment.API_SANDBOX_KEY, 'utf-8')\r",
+									"\r",
+									"//Street 1 is the EAT Parameter for this function if applicable\r",
+									"let street1 = pm.variables.get(\"street1\")\r",
+									"\r",
+									"//Encrypt the Authentication string (encoded) with the API key\r",
+									"let encoded = payer+idap+now;\r",
+									"//let encoded = payer+idap+now+street1;\r",
+									"\r",
+									"//Encrypt the Authentication string (encoded) with the API key\r",
+									"let hmac = CryptoJS.HmacSHA256(encoded, key).toString(CryptoJS.digest)\r",
+									"\r",
+									"//Set the generated hashkey to environment variable as 'hmac'\r",
+									"pm.environment.set('hmac',hmac);\r",
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "basic"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "text/xml; charset=utf-8",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "<x:Envelope\r\n    xmlns:x=\"http://schemas.xmlsoap.org/soap/envelope/\"\r\n    xmlns:tip=\"http://Tipalti.org/\">\r\n    <x:Header/>\r\n    <x:Body>\r\n        <tip:UpdateOrCreatePayeeInfo>\r\n            <tip:payerName>{{PayerName}}</tip:payerName>\r\n            <tip:idap>{{idap}}</tip:idap>\r\n            <tip:timestamp>{{now}}</tip:timestamp>\r\n            <tip:key>{{hmac}}</tip:key>\r\n            <tip:skipNulls>1</tip:skipNulls>\r\n            <!-- If passing null values in the request and are to be ignored, skipNulls = 1 (TRUE) -->\r\n            <!-- If skipNulls = 0, the request will use the values in the parameters and replace existing values -->\r\n            <tip:overridePayableCountry>false</tip:overridePayableCountry>\r\n            <tip:item>\r\n                <tip:Idap>{{idap}}</tip:Idap>\r\n                <tip:FirstName></tip:FirstName>\r\n                <tip:LastName></tip:LastName>\r\n                <tip:Street1></tip:Street1> \r\n                <!-- if Street 1 has a value, include it as an EAT parameter -->\r\n                <!-- The authentication key should look like let encoded = payer+idap+now+street1; -->\r\n                <!-- Optional -->\r\n                <tip:Street2></tip:Street2>\r\n                <tip:City></tip:City>\r\n                <tip:State></tip:State>\r\n                <tip:Zip></tip:Zip>\r\n                <!-- <tip:Country></tip:Country> -->\r\n                <!-- If updating a payee, and Country = null, remove from request regardless of skipNulls -->\r\n                <!-- If skipNulls =0, country is required when creating a payee-->\r\n                <tip:Email></tip:Email>\r\n                <tip:Alias></tip:Alias>\r\n                <!-- <tip:Company></tip:Company> -->\r\n                <!-- <tip:PreferredPayerEntity></tip:PreferredPayerEntity> -->\r\n                <!-- <tip:MiddleName></tip:MiddleName> -->\r\n                <!-- Not applicable for this workflow -->\r\n                <!-- <tip:ApAccountNumber></tip:ApAccountNumber> -->\r\n                <!-- <tip:PayerEntityName></tip:PayerEntityName> -->\r\n                <tip:PaymentTermId></tip:PaymentTermId>\r\n                <tip:CountryName></tip:CountryName>\r\n\r\n                <!--Not applicable for this workflow, If using Quickbooks only -->\r\n                <!-- <tip:ErpCurrency></tip:ErpCurrency> -->\r\n                \r\n                <tip:PayeeEntityType>Company</tip:PayeeEntityType>\r\n                <!-- If not using PayeeEntityType, do not include in request -->\r\n\r\n                <!-- Not applicable for this workflow -->\r\n                <!-- <tip:ApAccountExternalId></tip:ApAccountExternalId> -->\r\n\r\n                <!-- If payee needs different language -->\r\n                <!-- <tip:Language></tip:Language> -->\r\n\r\n                <!-- The payee ID in the ERP (e.g., in NetSuite it is the vendor ID) -->\r\n                <!-- <tip:ExternalId></tip:ExternalId> -->\r\n\r\n                <!-- Indicates whether to send the payee an invite to register in the Supplier Hub (only sent if the payee has never received an invitation) -->\r\n                <!-- <tip:SendSupplierPortalInvite></tip:SendSupplierPortalInvite> -->\r\n            </tip:item>\r\n        </tip:UpdateOrCreatePayeeInfo>\r\n    </x:Body>\r\n</x:Envelope>",
+							"options": {
+								"raw": {
+									"language": "xml"
+								}
+							}
+						},
+						"url": {
+							"raw": "https://api.sandbox.tipalti.com/v9/PayeeFunctions.asmx",
+							"protocol": "https",
+							"host": [
+								"api",
+								"sandbox",
+								"tipalti",
+								"com"
+							],
+							"path": [
+								"v9",
+								"PayeeFunctions.asmx"
+							]
+						},
+						"description": "The UpdateOrCreatePayeeInfo function allows the creation or updating of a particular payee\n\n- This API call requires you to enter a payee ID (idap) to query.\n- EAT parameter: Street1\n- SkipNulls\n    - If passing null values in the request and are to be ignored, skipNulls = 1 (TRUE)\n    - If skipNulls = 0, the request will use the values in the parameters and replace existing values\n- If the address is changed via this API call, the payment method in the iFrame/Portal is invalidated. The payee is notified and when they next log into the iFrame/Portal, the details on the \"Payment Method\" page must be completed again.\n    \n\n**Pre-request script - Authorization string \\[variable name = encoded\\]**\n\n``` javascript\nlet encoded = payer+idap+now;\n//let encoded = payer+idap+now+street1;\n//If EAT Parameter is passed\n\n```\n\n### [Request parameters](https://support.tipalti.com/Content/Topics/Development/APIs/PayeeAPI/UpdatePayee/UpdateOrCreatePayeeInfo/Intro.htm)\n\n_**Please note: The function consists of different parameters for different workflows. The not applicable parameters have been commented out in the request body, and with comments if any if applicable.**__**For any questions, please refer to the documentation or reach out to your Implementation Manager.**_\n\n| **Variable** | **Description** | **Limitation** | **Mandatory** | **Data Type** |\n| --- | --- | --- | --- | --- |\n| payerName | The name of the payer, as assigned by Tipalti | Value is case sensitive | Mandatory | string |\n| timeStamp | Current time (UTC) when the request is sent | Unix time | Mandatory | double |\n| key | Encrypted Hash key |  | Mandatory | string |\n| idap | Unique payee identifier (the payee ID) |  | Mandatory | string |\n| skipNulls | If skipNulls=1, this service ignores parameters with a null value.  <br>  <br>If skipNulls=0, the null values overwrite existing values. | Replace TRUE with 1, FALSE with 0 | Mandatory | boolean |\n| item | List of payee details |  | Optional | Array of PayeeDetailsItem |\n\n### [PayeeDetailsItem](https://support.tipalti.com/Content/Topics/Development/APIs/PayeeAPI/UpdatePayee/UpdateOrCreatePayeeInfo/Intro.htm#:~:text=PayeeDetailsItem-,PayeeDetailsItem,-ELEMENT)\n\n| **Variable** | **Description** | **Limitation** | **Mandatory** | **Data Type** |\n| --- | --- | --- | --- | --- |\n| Idap | Unique payee identifier (the payee ID) | Max. length = 64  <br>No special characters | Mandatory | string |\n| FirstName | Payee First Name | Max. length = 70  <br>Valid characters:  <br>Latin and numeric (cannot be only numeric)  <br>Spaces, periods, dashes (cannot be the first character)—e.g., \"Mary Jo\", \"Jr.\", \"Mary-Jo\" | Optional | double |\n| LastName | Payee Last Name | Max. length = 70  <br>Valid characters:  <br>Latin and numeric (cannot be only numeric)  <br>Spaces, periods, dashes (cannot be the first character)—e.g., \"Mary Jo\", \"Jr.\", \"Mary-Jo\" | Optional | string |\n| Street1 | Payee street address line 1 | Max. length = 35  <br>Valid EBCDIC values: Letters, numbers and special characters ^\\[\\\\w\\\\d\\\\/\\\\-\\\\?\\\\:\\\\(\\\\)\\\\.\\\\,\\\\'\\\\+ \\]+$\" | Optional | string |\n| Country | Payee country | Remove parameter if null while updating payees. If parameter is included, without a value, it will fail.  <br>For Creation - no value in the parameter can work. | Optional  <br>Mandatory (when updating payees and passing parameter. Remove parameter if not needed) | string |\n| PayeeEntityType | The type of payee:  <br>  <br>Individual  <br>Company | If not using PayeeEntityType, do not include in request | Optional | string |\n\nFor all other values, refer to the tipalti documentation page."
+					},
+					"response": []
+				}
+			],
+			"description": "The payee API is used to get or update payee information. The current version of the APIs is V11. All elements are case sensitive and API timeout is 10 minutes.\n\nA maximum of 250 records are allowed per API call. Exceeding this limit causes the call to time out, so you may need to consider a change in workflow depending on volume.\n\n<u><b>API Functions to get payee details</b></u>\n\n- GetPayeeDetails\n- GetExtendedPayeeDetails\n    \n\n<u><b>API Functions to update payee(s)</b></u>\n\n- UpdateOrCreatePayeeInfo"
+		},
+		{
+			"name": "Payer API - Payments",
+			"item": [
+				{
+					"name": "ProcessPayments",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"/*\r",
+									"ProcessPayments\r",
+									"    Minimum required fields - PayerName, IDAP, Amount, Payment Ref Code. \r",
+									"    Payment Group Title is optional, hence defaulted to None. \r",
+									"    All other fields are optional, and not included in the SOAP request in this code example. \r",
+									"    Please replace with appropriate parameters of the SOAP call and variables. \r",
+									"*/\r",
+									"\r",
+									"//Get the timestamp, and remove leading 0s\r",
+									"let now = Math.floor(Date.now() / 1000) \r",
+									"\r",
+									"//Set the time to variable 'now'\r",
+									"pm.environment.set('now',now)\r",
+									"\r",
+									"//Retrieve the payer name from the environment\r",
+									"let payer = pm.variables.get(\"PayerName\")\r",
+									"\r",
+									"//Retrieve the idap from the environment, reuse if idap needs to get passed in the encryption\r",
+									"let idap = pm.variables.get(\"idap\")\r",
+									"\r",
+									"//Retrieve the API Key for this sandbox instance\r",
+									"let key = encodeURI(environment.API_SANDBOX_KEY, 'utf-8')\r",
+									"\r",
+									"/*if EAT parameter needs to be passed, EATParameter = paymentGroupTitle\r",
+									"let encoded = payer+now+paymentGroupTitle; */\r",
+									"\r",
+									"//Encrypt the Authentication string (encoded) with the API key\r",
+									"let encoded = payer+now;\r",
+									"\r",
+									"//Encrypt the Authentication string (encoded) with the API key\r",
+									"let hmac = CryptoJS.HmacSHA256(encoded, key).toString(CryptoJS.digest)\r",
+									"\r",
+									"//Set the generated hashkey to environment variable as 'hmac'\r",
+									"pm.environment.set('hmac',hmac);\r",
+									"\r",
+									"//Set random amount\r",
+									"pm.environment.set('pay_amount', _.random(10, 700))\r",
+									"\r",
+									"//Set random reference code\r",
+									"let pay_amount = pm.variables.get(\"pay_amount\")\r",
+									"let ref_code = (Math.random() + 1).toString(36).substring(2);\r",
+									"pm.environment.set('ref_code',ref_code)\r",
+									""
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "text/xml; charset=utf-8",
+								"type": "text"
+							},
+							{
+								"key": "SOAPAction",
+								"value": "http://Tipalti.org/ProcessPayments",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "<!-- ProcessPayments\r\n    Minimum required fields - PayerName, IDAP, Amount, Payment Ref Code. \r\n    Payment Group Title is optional, hence defaulted to None. \r\n    All other fields are optional, and not included in the SOAP request in this code example. \r\n    Please replace with appropriate parameters of the SOAP call and variables.\r\n     -->\r\n<x:Envelope\r\n    xmlns:x=\"http://schemas.xmlsoap.org/soap/envelope/\"\r\n    xmlns:tip=\"http://Tipalti.org/\">\r\n    <x:Header/>\r\n    <x:Body>\r\n        <tip:ProcessPayments>\r\n            <tip:payerName>{{PayerName}}</tip:payerName>\r\n            <tip:tipaltiPaymentsOrders>\r\n                <tip:TipaltiPaymentOrderItem>\r\n                    <tip:Idap>{{idap}}</tip:Idap>\r\n                    <tip:Amount>{{pay_amount}}</tip:Amount>\r\n                    <tip:RefCode>{{ref_code}}</tip:RefCode>\r\n                </tip:TipaltiPaymentOrderItem>\r\n            </tip:tipaltiPaymentsOrders>\r\n            <tip:timeStamp>{{now}}</tip:timeStamp>\r\n            <tip:key>{{hmac}}</tip:key>\r\n        </tip:ProcessPayments>\r\n    </x:Body>\r\n</x:Envelope>",
+							"options": {
+								"raw": {
+									"language": "xml"
+								}
+							}
+						},
+						"url": {
+							"raw": "https://api.sandbox.tipalti.com/v11/PayerFunctions.asmx",
+							"protocol": "https",
+							"host": [
+								"api",
+								"sandbox",
+								"tipalti",
+								"com"
+							],
+							"path": [
+								"v11",
+								"PayerFunctions.asmx"
+							]
+						},
+						"description": "# [ProcessPayments](https://support.tipalti.com/Content/Topics/Development/APIs/PayerAPI/PaymentsAndFees/ProcessPayments/Intro.htm)\n\nThe ProcessPayments function processes payments from a list of payment orders. A [payment group](https://support.tipalti.com/Content/Topics/Development/APIs/PayerAPI/PaymentsAndFees/ProcessPayments/Intro.htm#) is created, the payments are added to it and then submitted. The payment list cannot be more than 250 items long.\n\n> Tipalti uses the payment refcode to safeguard against duplicate payments. If you try to submit the same payment again using a different refcode in case of an error, it may result in duplicate payments going out to the payee. Please ensure your code handles this error situation correctly.\n\n- EAT parameter: paymentGroupTitle\n- The function contains the minimum fields needed for the function to work.  \n    For additional parameters, please refer to the [documentation](https://support.tipalti.com/Content/Topics/Development/APIs/PayerAPI/PaymentsAndFees/ProcessPayments/Intro.htm)\n- Tipalti Payment Order Item refers to a singular payment order in Tipalti. There can be multiple payment orders in a call.\n    \n\n**Pre-request script - Authorization string \\[variable name = encoded\\]**\n\n``` javascript\nlet encoded = payer+now;\n\n/* if EAT parameter needs to be passed, EATParameter = paymentGroupTitle\nlet encoded = payer+now+paymentGroupTitle; */\n\n```\n\n## [Request parameters](https://support.tipalti.com/Content/Topics/Development/APIs/PayerAPI/PaymentsAndFees/ProcessPayments/Intro.htm#RequestParameters)\n\n| **Variable** | **Description** | **Limitation** | **Mandatory** | **Data Type** |\n| --- | --- | --- | --- | --- |\n| payerName | The name of the payer, as assigned by Tipalti | Value is case sensitive | Mandatory | string |\n| tipaltiPaymentsOrders | List of payment items  <br>Each payment item is of type TipaltiPayment  <br>OrderItem |  | Mandatory | Array of TipaltiPayment  <br>OrderItem |\n| timeStamp | Current time (UTC) when the request is sent | Unix time | Mandatory | double |\n| key | Encrypted Hash key |  | Mandatory | string |\n| paymentGroupTitle | Title of payment group |  | Optional  <br>\\[EAT Parameter\\] | string |\n\n## [Tipalti Payment Order Item](https://support.tipalti.com/Content/Topics/Development/APIs/PayerAPI/PaymentsAndFees/ProcessPayments/Intro.htm#TipaltiPaymentOrderItem)\n\n| **Variable** | **Description** | **Limitation** | **Mandatory** | **Data Type** |\n| --- | --- | --- | --- | --- |\n| Idap | Unique payee identifier (the payee ID) | Max. length = 64  <br>No special characters | Mandatory | string |\n| Amount | The amount to be paid to the payee | Do not enter the currency symbol or thousand separators.  <br>Allowed characters are digits and an optional decimal point for cents (only the first 2 digits after the decimal point are taken into account).  <br>Default = USD | Mandatory | double |\n| RefCode | The reference code for the payment order |  | Mandatory | string |\n| Currency | The currency of the amount submitted | Length = 3 (per [ISO 4217](https://support.tipalti.com/Content/Topics/UserGuide/GeneralInformation/IsoCodes.htm?Highlight=country%20code#ISO4217))  <br>Default = Null = USD | Optional | string |"
+					},
+					"response": []
+				}
+			],
+			"description": "The payer API is used for payer administrative operations, such as processing and testing a [payment file](https://support.tipalti.com/Content/Topics/Development/APIs/PayerAPI/Intro.htm#). The current version of the APIs is V11. All elements are case sensitive and API timeout is 10 minutes.\n\nA maximum of 250 records are allowed per API call. Exceeding this limit causes the call to time out, so you may need to consider a change in workflow depending on volume.\n\n<u><b>API functions for Payments and fees</b></u>\n\n- ProcessPayments\n    \n\n**Pre-request script - Authorization string \\[variable name = encoded\\]**\n\n``` javascript\nlet encoded = payer+now;\n/*if EAT parameter needs to be passed, EATParameter = paymentGroupTitle\nlet encoded = payer+now+paymentGroupTitle; */\n\n```"
+		}
+	]
+}
